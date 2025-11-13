@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Prueba Kat - Test de Inglés</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #ffd700;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  #container {
+    background: #1c1c1c;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 0 20px #ffd700;
+    width: 600px;
+    max-width: 90%;
+    text-align: center;
+  }
+  h1 { margin-bottom: 10px; }
+  .question-card {
+    background: #222;
+    border: 2px solid #ffd700;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 15px 0;
+    min-height: 120px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: all 0.3s ease;
+  }
+  .question-card.fade-in {
+    animation: fadeIn 0.5s;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  button {
+    background: #ffd700;
+    border: none;
+    padding: 12px 25px;
+    font-size: 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+    margin-top: 15px;
+  }
+  button:hover {
+    box-shadow: 0 0 15px #ffd700;
+  }
+  .options button {
+    display: block;
+    margin: 10px auto;
+    width: 80%;
+    background: #333;
+    color: #ffd700;
+    border: 1px solid #ffd700;
+  }
+  .options button.correct { background: green; color: #fff; }
+  .options button.wrong { background: red; color: #fff; }
+  #progress-bar {
+    height: 20px;
+    background: #333;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  #progress-fill {
+    height: 100%;
+    background: #ffd700;
+    width: 0%;
+    transition: width 0.3s;
+  }
+  #timer { font-size: 18px; margin-bottom: 15px; }
+  #mic-status { font-size: 14px; margin-top: 10px; }
+  input[type="text"] {
+    width: 80%;
+    padding: 8px;
+    margin-top: 10px;
+    border-radius: 5px;
+    border: 1px solid #ffd700;
+    background: #222;
+    color: #ffd700;
+  }
+  #result {
+    font-size: 18px;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+<div id="container">
+  <h1>Prueba Kat</h1>
+  <div id="timer">Tiempo: 20:00</div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+  <div id="question-container">
+    <button id="start-btn">INICIAR</button>
+  </div>
+  <div id="result"></div>
+</div>
+
+<script>
+const totalTime = 20 * 60; // 20 minutos en segundos
+let timeLeft = totalTime;
+let timerInterval;
+let currentQuestion = 0;
+
+const questions = [
+  // Repeat after me
+  {type: 'repeat', text: 'Hello, how are you today?', answer: 'Hello, how are you today?'},
+  {type: 'repeat', text: 'I would like to change my flight ticket.', answer: 'I would like to change my flight ticket.'},
+  // Choose what you heard
+  {type: 'listen', text: 'Which number did the speaker say?', options: ['25', '52', '15'], answer: '25'},
+  {type: 'listen', text: 'Which word did the speaker say?', options: ['airport', 'apartment', 'airline'], answer: 'airport'},
+  // Fill in the blank
+  {type: 'fill', text: 'I ___ to the park yesterday.', answer: 'went'},
+  // Multiple choice
+  {type: 'mcq', text: 'Select the correct past tense of "go"', options: ['goed', 'went', 'goes'], answer: 'went'},
+  {type: 'mcq', text: 'Select the synonym of "happy"', options: ['sad', 'joyful', 'angry'], answer: 'joyful'},
+  // ... añadir hasta 30 preguntas
+];
+
+function startTest() {
+  document.getElementById('start-btn').style.display = 'none';
+  showQuestion();
+  timerInterval = setInterval(updateTimer, 1000);
+}
+
+function updateTimer() {
+  if(timeLeft <= 0){
+    clearInterval(timerInterval);
+    showResults();
+    return;
+  }
+  timeLeft--;
+  let min = Math.floor(timeLeft/60).toString().padStart(2,'0');
+  let sec = (timeLeft%60).toString().padStart(2,'0');
+  document.getElementById('timer').textContent = `Tiempo: ${min}:${sec}`;
+}
+
+function showQuestion() {
+  if(currentQuestion >= questions.length){
+    clearInterval(timerInterval);
+    showResults();
+    return;
+  }
+  const q = questions[currentQuestion];
+  const container = document.getElementById('question-container');
+  container.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'question-card fade-in';
+  card.innerHTML = `<p>${q.text}</p>`;
+
+  if(q.type === 'repeat'){
+    const btn = document.createElement('button');
+    btn.textContent = 'Grabar';
+    btn.onclick = () => startRecording(q);
+    card.appendChild(btn);
+    const status = document.createElement('div');
+    status.id = 'mic-status';
+    card.appendChild(status);
+  }
+  if(q.type === 'listen' || q.type === 'mcq'){
+    const optionsDiv = document.createElement('div');
+    optionsDiv.className = 'options';
+    q.options.forEach(opt => {
+      const b = document.createElement('button');
+      b.textContent = opt;
+      b.onclick = () => checkAnswer(opt, q.answer);
+      optionsDiv.appendChild(b);
+    });
+    card.appendChild(optionsDiv);
+  }
+  if(q.type === 'fill'){
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.id = 'fill-input';
+    card.appendChild(input);
+    const btn = document.createElement('button');
+    btn.textContent = 'Comprobar';
+    btn.onclick = () => checkAnswer(document.getElementById('fill-input').value.trim(), q.answer);
+    card.appendChild(btn);
+  }
+
+  const nextBtn = document.createElement('button');
+  nextBtn.textContent = 'SIGUIENTE';
+  nextBtn.onclick = () => { currentQuestion++; showQuestion(); updateProgress(); };
+  card.appendChild(nextBtn);
+
+  container.appendChild(card);
+}
+
+function updateProgress() {
+  const progress = ((currentQuestion)/questions.length)*100;
+  document.getElementById('progress-fill').style.width = progress + '%';
+}
+
+function startRecording(q) {
+  const status = document.getElementById('mic-status');
+  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recognition.lang = 'en-US';
+  recognition.start();
+  status.textContent = 'Grabando...';
+  recognition.onresult = function(event){
+    const spoken = event.results[0][0].transcript;
+    status.textContent = `Dijiste: "${spoken}" ${spoken.toLowerCase() === q.answer.toLowerCase() ? '✅ Correcto' : '❌ Incorrecto'}`;
+  };
+  recognition.onerror = function(){ status.textContent = 'Error al grabar.'; }
+  recognition.onend = function(){ /* se puede pasar automático si se desea */ }
+}
+
+function checkAnswer(given, correct){
+  const container = document.getElementById('question-container');
+  alert(given.toLowerCase() === correct.toLowerCase() ? '✅ Correcto' : `❌ Incorrecto. Respuesta: ${correct}`);
+}
+
+function showResults(){
+  document.getElementById('question-container').innerHTML = `<h2>Prueba finalizada</h2><p>Resultados generales.</p>`;
+  document.getElementById('progress-fill').style.width = '100%';
+}
+
+document.getElementById('start-btn').onclick = startTest;
+</script>
+</body>
+</html>
